@@ -1,0 +1,27 @@
+# Reference: https://github.com/lima-vm/lima/blob/master/templates/default.yaml
+
+vmType: "vz"
+
+os: "Linux"
+
+disk: "10GiB"
+
+mountType: "virtiofs"
+mounts: []
+
+additionalDisks: []
+
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/plucky/release-20250701/ubuntu-25.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+    digest: "sha256:26d0ac2236f12954923eb35ddfee8fa9fff3eab6111ba84786b98ab3b972c6d8"
+
+user:
+  name: dev
+  home: /home/dev
+  shell: /bin/bash
+
+ssh:
+  localPort: 60022
+  forwardAgent: false
+  loadDotSSHPubKeys: null
