@@ -19,9 +19,36 @@ images:
 user:
   name: dev
   home: /home/dev
-  shell: /bin/bash
+  shell: /bin/zsh
 
 ssh:
   localPort: 60022
-  forwardAgent: false
+  forwardAgent: true
   loadDotSSHPubKeys: null
+
+provision:
+  - mode: system
+    script: |
+      sudo apt install zsh git make neovim -y
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      DIRECTORY="$HOME/dotfiles"
+      
+      if [ -d "$DIRECTORY" ]; then
+        echo "$DIRECTORY exists, skipping setup"
+        exit 1
+      fi
+
+      echo "$DIRECTORY does not exist, will setup"
+
+      cd $HOME
+
+      git clone https://github.com/vytautasjc/dotfiles.git
+      
+      cd $DIRECTORY
+
+      make setup-zsh setup-git
