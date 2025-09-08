@@ -3,7 +3,7 @@ DATA_DISK_NAME=dev-data
 DATA_DISK_SIZE=20GiB
 
 setup:
-	limactl disk create $(DATA_DISK_NAME) --size $(DATA_DISK_SIZE) --format raw || true
+	limactl disk create $(DATA_DISK_NAME) --size $(DATA_DISK_SIZE) --format raw
 	limactl create \
 		--name $(VM) \
 		--set 'with(.additionalDisks[0]; .name = "$(DATA_DISK_NAME)" | .format = true | .fsType = "ext4")' \
@@ -13,6 +13,7 @@ create:
 	limactl create \
 	--name $(VM) \
 	--set '.additionalDisks[0] = "$(DATA_DISK_NAME)"' \
+	--yes \
 	./$(VM).yaml
 
 start:
@@ -23,8 +24,8 @@ ssh:
 	limactl shell $(VM)
 
 stop:
+	limactl stop -f $(VM)
 	limactl disk unlock $(DATA_DISK_NAME)
-	limactl stop $(VM)
 
 delete:
 	limactl delete $(VM) -f
