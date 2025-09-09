@@ -1,5 +1,8 @@
 # Reference: https://github.com/lima-vm/lima/blob/master/templates/default.yaml
 
+param:
+  dataMountPath: /mnt/lima-dev-data
+
 vmType: "vz"
 
 os: "Linux"
@@ -30,6 +33,7 @@ provision:
   - mode: system
     script: |
       sudo apt install zsh git make neovim -y
+      sudo chown -R dev "{{.Param.dataMountPath}}"
 
   # Setup dotfiles
   - mode: user
