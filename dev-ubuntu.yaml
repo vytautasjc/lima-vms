@@ -36,7 +36,7 @@ provision:
       set -eux -o pipefail
 
       # Setup data mount permissions
-      chown -R dev "{{.Param.dataMountPath}}"
+      chown -R "{{.User}}" "{{.Param.dataMountPath}}"
       
       # Install and update packages
       export DEBIAN_FRONTEND=noninteractive
