@@ -31,6 +31,7 @@ provision:
     script: |
       sudo apt install zsh git make neovim -y
 
+  # Setup dotfiles
   - mode: user
     script: |
       #!/bin/bash
@@ -52,3 +53,14 @@ provision:
       cd $DIRECTORY
 
       make setup-zsh setup-git
+
+  # Install NVM
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      export DEBIANT_FRONTEND=noninteractive
+
+      # Do not edit shell config files
+      PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash'
