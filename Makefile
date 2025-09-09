@@ -20,7 +20,7 @@ start:
 	limactl disk unlock $(DATA_DISK_NAME)
 	limactl start $(VM)
 
-ssh:
+shell:
 	limactl shell $(VM)
 
 stop:
