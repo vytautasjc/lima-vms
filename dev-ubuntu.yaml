@@ -94,6 +94,23 @@ provision:
         exit 1
       fi
 
+
+      if [ -e "{{.Param.dataMountPath}}/config/.zshenv.local" ]; then
+        echo "Creating a symlink to .zshenv.local"
+        ln -sf "{{.Param.dataMountPath}}/config/.zshenv.local" "$HOME/.zshenv.local"
+      fi
+
+      if [ -e "{{.Param.dataMountPath}}/config/.gitconfig" ]; then
+        echo "Creating a symlink to .gitconfig"
+        ln -sf "{{.Param.dataMountPath}}/config/.gitconfig" "$HOME/.gitconfig"
+      fi
+
+      if [ -e "{{.Param.dataMountPath}}/config/ssh/config" ]; then
+        echo "Creating a symlink to ssh/config"
+        mkdir -p $HOME/.ssh
+        ln -sf "{{.Param.dataMountPath}}/config/ssh/config" "$HOME/.ssh/config"
+      fi
+
       echo "$DIRECTORY does not exist, will setup"
 
       cd $HOME
@@ -114,3 +131,6 @@ provision:
 
       # Do not edit shell config files
       PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash'
+
+      nvm install node
+      nvm alias default node
