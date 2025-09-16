@@ -81,6 +81,17 @@ provision:
       groupadd docker
       usermod -aG docker {{.User}}
 
+  # Install NVM
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      export DEBIANT_FRONTEND=noninteractive
+
+      # Do not edit shell config files
+      PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash'
+
   # Setup dotfiles
   - mode: user
     script: |
@@ -121,16 +132,11 @@ provision:
 
       make setup-zsh setup-git
 
-  # Install NVM
+  # Setup Node.js
   - mode: user
     script: |
       #!/bin/bash
       set -eux -o pipefail
-
-      export DEBIANT_FRONTEND=noninteractive
-
-      # Do not edit shell config files
-      PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash'
 
       nvm install node
       nvm alias default node
