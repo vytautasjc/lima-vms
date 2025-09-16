@@ -7,7 +7,7 @@ vmType: "vz"
 
 os: "Linux"
 
-disk: "10GiB"
+disk: "20GiB"
 
 mountType: "virtiofs"
 mounts: []

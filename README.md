@@ -21,6 +21,26 @@ It simplifies creating, starting, stopping, and deleting VMs and disks.
 - **delete** — delete VM (disk remains)  
 - **delete-data** — delete data disk  
 
+## SSH Setup
+
+Add this to `~/.ssh/config`:
+
+```
+Host lima-dev-ubuntu
+  Hostname 127.0.0.1
+  User dev
+  Port 60022
+  IdentityFile ~/.lima/_config/user
+  ForwardAgent yes
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  NoHostAuthenticationForLocalhost yes
+  Compression no
+  BatchMode yes
+  IdentitiesOnly yes
+  GSSAPIAuthentication no
+```
+
 ## Workflow
 1. Run `make setup` once for a fresh VM with a new disk  
 2. For daily use: `make start` → `make ssh` → `make stop`  
