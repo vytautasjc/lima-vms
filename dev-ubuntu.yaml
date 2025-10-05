@@ -44,7 +44,7 @@ provision:
       apt-get update -y
       apt-get dist-upgrade -y
       apt-get autoremove -y
-      apt-get install zsh git make neovim -y
+      apt-get install zsh git make neovim unzip zip -y
 
   # Setup Docker
   - mode: system
@@ -127,7 +127,6 @@ provision:
       #!/bin/bash
       set -eux -o pipefail
 
-
   # Install NVM
   - mode: user
     script: |
@@ -144,3 +143,20 @@ provision:
 
       nvm install node
       nvm alias default node
+
+  # Install SDKMAN
+  - mode: user
+    script: |
+      #!/bin/bash
+      
+      ### Do not set -u to not treat unbound variables as error:
+      ### sdkman-init.sh: line 20: SDKMAN_CANDIDATES_API: unbound variable
+      set -ex -o pipefail
+
+      export DEBIANT_FRONTEND=noninteractive
+
+      curl -s "https://get.sdkman.io?ci=true&rcupdate=false" | bash
+      . "$HOME/.sdkman/bin/sdkman-init.sh"
+
+      sdk install java 25-open
+      sdk install java 25-graalce
