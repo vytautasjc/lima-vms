@@ -2,6 +2,8 @@ VM=dev-ubuntu
 DATA_DISK_NAME=dev-data
 DATA_DISK_SIZE=20GiB
 
+.PHONY: setup create start shell stop delete delete-data
+
 setup:
 	limactl disk create $(DATA_DISK_NAME) --size $(DATA_DISK_SIZE) --format raw
 	limactl create \

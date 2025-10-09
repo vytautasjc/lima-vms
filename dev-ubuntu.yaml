@@ -20,8 +20,8 @@ images:
     digest: "sha256:26d0ac2236f12954923eb35ddfee8fa9fff3eab6111ba84786b98ab3b972c6d8"
 
 user:
-  name: dev
-  home: /home/dev
+  name: limadev
+  home: /home/limadev
   shell: /bin/zsh
 
 ssh:
