@@ -119,7 +119,7 @@ provision:
       
       cd $DIRECTORY
 
-      make setup-zsh setup-git
+      make zsh git
 
   # Setup Node.js via NVM
   - mode: user
