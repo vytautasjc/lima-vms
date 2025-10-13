@@ -2,6 +2,7 @@
 
 param:
   dataMountPath: /mnt/lima-dev-data
+  vmStateFile: .vmstate
 
 vmType: "vz"
 
@@ -48,14 +49,22 @@ provision:
       apt-get autoremove -y
       apt-get install zsh git make neovim unzip zip -y
 
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      
+      touch stateFile
+      chown "{{.User}}" "$stateFile"
+
   # Setup Docker
   - mode: system
     script: |
       #!/bin/bash
       set -eux -o pipefail
 
-      if command -v docker &>/dev/null; then
-        echo "Docker is installed. Exiting."
+      stateText="docker"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+
+      if grep -Fxq "$stateText" "$stateFile"; then
+        echo "Docker is already setup, skipping..."
         exit 0
       fi
 
@@ -83,6 +92,8 @@ provision:
       groupadd docker || echo "Group docker already exists"
       usermod -aG docker {{.User}}
 
+      echo "$stateText" >> "$stateFile"
+
   # Setup dotfiles
   - mode: user
     script: |
@@ -90,12 +101,6 @@ provision:
       set -eux -o pipefail
 
       DIRECTORY="$HOME/dotfiles"
-      
-      if [ -d "$DIRECTORY" ]; then
-        echo "$DIRECTORY exists, skipping setup"
-        exit 1
-      fi
-
 
       if [ -e "{{.Param.dataMountPath}}/config/.zshenv.local" ]; then
         echo "Creating a symlink to .zshenv.local"
@@ -123,17 +128,19 @@ provision:
 
       make zsh git
 
-  # Setup Node.js via NVM
-  - mode: user
-    script: |
-      #!/bin/bash
-      set -eux -o pipefail
-
   # Install NVM
   - mode: user
     script: |
       #!/bin/bash
       set -eux -o pipefail
+
+      stateText="nvm"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+
+      if grep -Fxq "$stateText" "$stateFile"; then
+        echo "NVM is already setup, skipping..."
+        exit 0
+      fi
 
       export DEBIANT_FRONTEND=noninteractive
 
@@ -146,6 +153,8 @@ provision:
       nvm install node
       nvm alias default node
 
+      echo "$stateText" >> "$stateFile"
+
   # Install SDKMAN
   - mode: user
     script: |
@@ -155,6 +164,14 @@ provision:
       ### sdkman-init.sh: line 20: SDKMAN_CANDIDATES_API: unbound variable
       set -ex -o pipefail
 
+      stateText="sdkman"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+
+      if grep -Fxq "$stateText" "$stateFile"; then
+        echo "SDKMAN is already setup, skipping..."
+        exit 0
+      fi
+
       export DEBIANT_FRONTEND=noninteractive
 
       curl -s "https://get.sdkman.io?ci=true&rcupdate=false" | bash
@@ -162,3 +179,5 @@ provision:
 
       sdk install java 25-open
       sdk install java 25-graalce
+
+      echo "$stateText" >> "$stateFile"
