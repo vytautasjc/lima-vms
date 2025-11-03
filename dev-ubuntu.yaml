@@ -51,7 +51,7 @@ provision:
 
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
       
-      touch stateFile
+      touch "$stateFile"
       chown "{{.User}}" "$stateFile"
 
   # Setup Docker
@@ -181,3 +181,43 @@ provision:
       sdk install java 25-graalce
 
       echo "$stateText" >> "$stateFile"
+
+  # Misc
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      link_data_dir() {
+        src_dir="$1"         # The directory under $HOME to manage (e.g., $HOME/.config/JetBrains)
+        target_dir="$2"      # The directory to create/link to (e.g., /mount/path/JetBrains/config)
+
+        if [ ! -d "$src_dir" ]; then
+          src_parent_dir="${src_dir%/*}"
+
+          mkdir -p "$target_dir" "$src_parent_dir"
+          ln -s "$target_dir" "$src_dir"
+        fi
+      }
+
+      NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" --no-use
+
+      nvm use default
+
+      # Install OpenAI Codex
+      npm install -g @openai/codex
+
+      link_data_dir "$HOME/.codex" "{{.Param.dataMountPath}}/config/codex"
+
+      # Setup IntelliJ config location
+
+      jetbrains_config_dir="$HOME/.config/JetBrains"
+      jetbrains_local_dir="$HOME/.config/local/share/JetBrains"
+      jetbrains_cache_dir="$HOME/.config/cache/JetBrains"
+      
+      jetbrains_data_mount_path="{{.Param.dataMountPath}}/config/JetBrains"
+
+      link_data_dir "$jetbrains_config_dir" "$jetbrains_data_mount_path/config"
+      link_data_dir "$jetbrains_local_dir" "$jetbrains_data_mount_path/local"
+      link_data_dir "$jetbrains_cache_dir" "$jetbrains_data_mount_path/cache"
