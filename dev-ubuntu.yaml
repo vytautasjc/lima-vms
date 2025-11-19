@@ -126,7 +126,7 @@ provision:
       
       cd $DIRECTORY
 
-      make zsh git
+      make zsh git codex
 
   # Install NVM
   - mode: user
