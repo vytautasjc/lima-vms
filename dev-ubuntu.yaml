@@ -126,7 +126,7 @@ provision:
       
       cd $DIRECTORY
 
-      make zsh git codex
+      make zsh git
 
   # Install NVM
   - mode: user
@@ -208,7 +208,7 @@ provision:
       # Install OpenAI Codex
       npm install -g @openai/codex
 
-      link_data_dir "$HOME/.codex" "{{.Param.dataMountPath}}/config/codex"
+      link_data_dir "$HOME/.config/codex" "{{.Param.dataMountPath}}/config/codex"
 
       # Setup IntelliJ config location
 
