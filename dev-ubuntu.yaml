@@ -126,7 +126,7 @@ provision:
       
       cd $DIRECTORY
 
-      make zsh git
+      make zsh git claude
 
   # Install NVM
   - mode: user
@@ -205,10 +205,12 @@ provision:
 
       nvm use default
 
-      # Install OpenAI Codex
+      # Install agents
       npm install -g @openai/codex
+      npm install -g @anthropic-ai/claude-code
 
       link_data_dir "$HOME/.config/codex" "{{.Param.dataMountPath}}/config/codex"
+      link_data_dir "$HOME/.config/claude" "{{.Param.dataMountPath}}/config/claude"
 
       # Setup IntelliJ config location
 
