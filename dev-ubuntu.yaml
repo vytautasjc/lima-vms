@@ -182,7 +182,7 @@ provision:
       
       cd $DIRECTORY
 
-      make zsh git claude zellij
+      make zsh git zellij
 
   # Install NVM
   - mode: user
