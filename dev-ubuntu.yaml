@@ -93,6 +93,62 @@ provision:
       usermod -aG docker {{.User}}
 
       echo "$stateText" >> "$stateFile"
+      chown "{{.User}}" "$stateFile"
+
+  # Setup Zellij
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      stateText="zellij"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+
+      if grep -Fxq "$stateText" "$stateFile"; then
+        echo "Zellij is already setup, skipping..."
+        exit 0
+      fi
+
+      echo "Zellij not found, proceeding with installation..."
+
+      export DEBIAN_FRONTEND=noninteractive
+
+      apt-get update -y
+
+      # Get the architecture of the machine
+      arch=$(uname -m)
+      os=$(uname -s)
+
+      # Download the Zellij binary
+      if [ "$os" == "Linux" ]; then
+        filename="zellij-${arch}-unknown-linux-musl.tar.gz"
+        url="https://github.com/zellij-org/zellij/releases/latest/download/$filename"
+        echo "Downloading Zellij binary for Linux..."
+        curl -LO "$url"
+      else
+        echo "Unsupported OS: $os"
+      fi
+
+      # Uncompress the Zellij binary
+      echo "Uncompressing Zellij binary..."
+      tar -xf "$filename"
+
+      # Move the Zellij binary to the /bin directory
+      echo "Moving Zellij binary to /bin directory..."
+      sudo mv "./zellij" /bin/zellij
+
+      # Remove the .tar.gz file
+      echo "Removing .tar.gz file..."
+      rm "$filename"
+
+      # Check if the Zellij binary exists
+      if [ -f "/bin/zellij" ]; then
+        echo "Zellij binary installed successfully!"
+      else
+        echo "Zellij binary not installed successfully!"
+      fi
+
+      echo "$stateText" >> "$stateFile"
 
   # Setup dotfiles
   - mode: user
@@ -126,7 +182,7 @@ provision:
       
       cd $DIRECTORY
 
-      make zsh git claude tmux
+      make zsh git claude zellij
 
   # Install NVM
   - mode: user
