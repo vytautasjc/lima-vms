@@ -126,7 +126,7 @@ provision:
       
       cd $DIRECTORY
 
-      make zsh git claude
+      make zsh git claude tmux
 
   # Install NVM
   - mode: user
