@@ -54,6 +54,29 @@ provision:
       touch "$stateFile"
       chown "{{.User}}" "$stateFile"
 
+  # Setup additional Playwright dependencies
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      stateText="playwright"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+
+      if grep -Fxq "$stateText" "$stateFile"; then
+        echo "Additional Playwright dependencies already setup, skipping..."
+        exit 0
+      fi
+
+      wget -O /tmp/libicu74.deb http://ports.ubuntu.com/pool/main/i/icu/libicu74_74.2-1ubuntu3.1_arm64.deb
+      dpkg -i /tmp/libicu74.deb
+      apt-get install -f -y
+      rm /tmp/libicu74.deb
+      echo "libicu74 installed successfully"
+
+      echo "$stateText" >> "$stateFile"
+      chown "{{.User}}" "$stateFile"
+
   # Setup Docker
   - mode: system
     script: |
