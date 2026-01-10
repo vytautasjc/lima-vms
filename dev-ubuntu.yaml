@@ -284,12 +284,19 @@ provision:
 
       nvm use default
 
+      link_data_dir "$HOME/development" "{{.Param.dataMountPath}}/development"
+
       # Install agents
       npm install -g @openai/codex
       npm install -g @anthropic-ai/claude-code
+      npm install -g @google/gemini-cli
 
       link_data_dir "$HOME/.config/codex" "{{.Param.dataMountPath}}/config/codex"
       link_data_dir "$HOME/.config/claude" "{{.Param.dataMountPath}}/config/claude"
+      link_data_dir "$HOME/.config/gemini" "{{.Param.dataMountPath}}/config/gemini"
+
+      # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
+      ln -s "$HOME/.config/gemini" "$HOME/.gemini"
 
       # Setup IntelliJ config location
 
