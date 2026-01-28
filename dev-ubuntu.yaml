@@ -74,6 +74,19 @@ provision:
       rm /tmp/libicu74.deb
       echo "libicu74 installed successfully"
 
+      apt-get install libatk1.0-0t64 \
+        libatk-bridge2.0-0t64 \
+        libcups2t64 \
+        libatspi2.0-0t64 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libcairo2 \
+        libpango-1.0-0 \
+        libasound2t64
+
       echo "$stateText" >> "$stateFile"
       chown "{{.User}}" "$stateFile"
 
