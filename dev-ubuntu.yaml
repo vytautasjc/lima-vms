@@ -9,7 +9,7 @@ vmType: "vz"
 os: "Linux"
 
 cpus: 8
-disk: "20GiB"
+disk: "30GiB"
 memory: "16GiB"
 
 mountType: "virtiofs"
@@ -248,6 +248,8 @@ provision:
       nvm use default
 
       link_data_dir "$HOME/development" "{{.Param.dataMountPath}}/development"
+
+      npm install -g pnpm
 
       # Install agents
       npm install -g @openai/codex
