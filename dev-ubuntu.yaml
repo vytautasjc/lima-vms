@@ -252,9 +252,9 @@ provision:
       npm install -g pnpm
 
       # Install agents
-      npm install -g @openai/codex
-      npm install -g @anthropic-ai/claude-code
-      npm install -g @google/gemini-cli
+      pnpm install -g @openai/codex
+      pnpm install -g @anthropic-ai/claude-code
+      pnpm install -g @google/gemini-cli
 
       link_data_dir "$HOME/.config/codex" "{{.Param.dataMountPath}}/config/codex"
       link_data_dir "$HOME/.config/claude" "{{.Param.dataMountPath}}/config/claude"
