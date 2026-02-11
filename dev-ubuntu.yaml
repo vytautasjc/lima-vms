@@ -32,6 +32,9 @@ ssh:
   forwardAgent: true
   loadDotSSHPubKeys: null
 
+env:
+  DOTFILES_DIR: "/home/limadev/dotfiles"
+
 provision:
   - mode: system
     script: |
@@ -139,10 +142,8 @@ provision:
   # Setup dotfiles
   - mode: user
     script: |
-      #!/bin/bash
+      #!/bin/zsh
       set -eux -o pipefail
-
-      DIRECTORY="$HOME/dotfiles"
 
       if [ -e "{{.Param.dataMountPath}}/config/.zshenv.local" ]; then
         echo "Creating a symlink to .zshenv.local"
@@ -160,20 +161,20 @@ provision:
         ln -sf "{{.Param.dataMountPath}}/config/ssh/config" "$HOME/.ssh/config"
       fi
 
-      echo "$DIRECTORY does not exist, will setup"
+      echo "$DOTFILES_DIR does not exist, will setup"
 
       cd $HOME
 
-      git clone https://github.com/vytautasjc/dotfiles.git
+      git clone https://github.com/vytautasjc/dotfiles.git $DOTFILES_DIR
       
-      cd $DIRECTORY
+      cd $DOTFILES_DIR
 
-      make zsh git gemini tmux
+      make zsh git tmux
 
   # Install NVM
   - mode: user
     script: |
-      #!/bin/bash
+      #!/bin/zsh
       set -eux -o pipefail
 
       stateText="nvm"
@@ -200,7 +201,7 @@ provision:
   # Install SDKMAN
   - mode: user
     script: |
-      #!/bin/bash
+      #!/bin/zsh
       
       ### Do not set -u to not treat unbound variables as error:
       ### sdkman-init.sh: line 20: SDKMAN_CANDIDATES_API: unbound variable
@@ -227,8 +228,11 @@ provision:
   # Misc
   - mode: user
     script: |
-      #!/bin/bash
+      #!/bin/zsh
       set -eux -o pipefail
+
+      source $HOME/.zshenv
+      source $ZDOTDIR/.zshrc
 
       link_data_dir() {
         src_dir="$1"         # The directory under $HOME to manage (e.g., $HOME/.config/JetBrains)
@@ -248,6 +252,12 @@ provision:
       nvm use default
 
       link_data_dir "$HOME/development" "{{.Param.dataMountPath}}/development"
+      link_data_dir "$HOME/.config/codex" "{{.Param.dataMountPath}}/config/codex"
+      link_data_dir "$HOME/.config/claude" "{{.Param.dataMountPath}}/config/claude"
+      link_data_dir "$HOME/.config/gemini" "{{.Param.dataMountPath}}/config/gemini"
+
+      # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
+      ln -s "$HOME/.config/gemini" "$HOME/.gemini"
 
       npm install -g pnpm
 
@@ -256,12 +266,8 @@ provision:
       pnpm install -g @anthropic-ai/claude-code
       pnpm install -g @google/gemini-cli
 
-      link_data_dir "$HOME/.config/codex" "{{.Param.dataMountPath}}/config/codex"
-      link_data_dir "$HOME/.config/claude" "{{.Param.dataMountPath}}/config/claude"
-      link_data_dir "$HOME/.config/gemini" "{{.Param.dataMountPath}}/config/gemini"
-
-      # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
-      ln -s "$HOME/.config/gemini" "$HOME/.gemini"
+      cd $DOTFILES_DIR
+      make gemini codex
 
       # Setup IntelliJ config location
 
