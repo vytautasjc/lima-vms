@@ -259,7 +259,10 @@ provision:
       # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
       ln -s "$HOME/.config/gemini" "$HOME/.gemini"
 
-      npm install -g pnpm
+      npm install -g corepack
+
+      corepack enable
+      corepack install -g pnpm@latest
 
       # Install agents
       pnpm install -g @openai/codex
