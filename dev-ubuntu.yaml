@@ -77,7 +77,7 @@ provision:
       rm /tmp/libicu74.deb
       echo "libicu74 installed successfully"
 
-      apt-get install libatk1.0-0t64 \
+      apt-get install -y libatk1.0-0t64 \
         libatk-bridge2.0-0t64 \
         libcups2t64 \
         libatspi2.0-0t64 \
