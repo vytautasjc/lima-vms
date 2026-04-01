@@ -38,7 +38,7 @@ env:
 provision:
   - mode: system
     script: |
-      #!/bin/bash
+      #!/bin/sh
       set -eux -o pipefail
 
       # Setup data mount permissions
@@ -50,7 +50,7 @@ provision:
       apt-get update -y
       apt-get dist-upgrade -y
       apt-get autoremove -y
-      apt-get install zsh git make neovim unzip zip tmux -y
+      apt-get install zsh git make neovim unzip zip unzip tmux -y
 
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
       
@@ -60,7 +60,7 @@ provision:
   # Setup additional Playwright dependencies
   - mode: system
     script: |
-      #!/bin/bash
+      #!/bin/sh
       set -eux -o pipefail
 
       stateText="playwright"
@@ -101,7 +101,7 @@ provision:
   # Setup Docker
   - mode: system
     script: |
-      #!/bin/bash
+      #!/bin/sh
       set -eux -o pipefail
 
       stateText="docker"
@@ -161,47 +161,43 @@ provision:
         ln -sf "{{.Param.dataMountPath}}/config/ssh/config" "$HOME/.ssh/config"
       fi
 
-      echo "$DOTFILES_DIR does not exist, will setup"
-
-      cd $HOME
-
-      git clone https://github.com/vytautasjc/dotfiles.git $DOTFILES_DIR
+      if [ ! -e "$DOTFILES_DIR" ]; then
+        echo "Cloning dotfiles..."
+        git clone https://github.com/vytautasjc/dotfiles.git "$DOTFILES_DIR"
+        cd "$DOTFILES_DIR" 
+      else
+        echo "Updating dotfiles..."
+        cd "$DOTFILES_DIR" && git pull origin main
+      fi
       
-      cd $DOTFILES_DIR
-
       make zsh git tmux
 
-  # Install NVM
+  # Setup fnm
   - mode: user
     script: |
       #!/bin/zsh
       set -eux -o pipefail
 
-      stateText="nvm"
+      stateText="fnm"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
 
       if grep -Fxq "$stateText" "$stateFile"; then
-        echo "NVM is already setup, skipping..."
+        echo "fnm is already setup, skipping..."
         exit 0
       fi
 
-      export DEBIANT_FRONTEND=noninteractive
+      . $HOME/.zshenv
 
-      # Do not edit shell config files
-      PROFILE=/dev/null bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash'
-
-      NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" --no-use
-
-      nvm install node
-      nvm alias default node
+      # Install fnm binary to $XDG_CONFIG_HOME/fnm
+      # We use --skip-shell to prevent the installer from modifying .zshrc/.bashrc automatically
+      curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
 
       echo "$stateText" >> "$stateFile"
-
+  
   # Install SDKMAN
   - mode: user
     script: |
-      #!/bin/zsh
+      #!/bin/sh
       
       ### Do not set -u to not treat unbound variables as error:
       ### sdkman-init.sh: line 20: SDKMAN_CANDIDATES_API: unbound variable
@@ -218,21 +214,20 @@ provision:
       export DEBIANT_FRONTEND=noninteractive
 
       curl -s "https://get.sdkman.io?ci=true&rcupdate=false" | bash
-      . "$HOME/.sdkman/bin/sdkman-init.sh"
+      source "$HOME/.sdkman/bin/sdkman-init.sh"
 
       sdk install java 25-open
       sdk install java 25-graalce
 
       echo "$stateText" >> "$stateFile"
 
-  # Misc
+  # Persistent data links
   - mode: user
     script: |
       #!/bin/zsh
       set -eux -o pipefail
 
-      source $HOME/.zshenv
-      source $ZDOTDIR/.zshrc
+      . $HOME/.zshenv
 
       link_data_dir() {
         src_dir="$1"         # The directory under $HOME to manage (e.g., $HOME/.config/JetBrains)
@@ -246,31 +241,10 @@ provision:
         fi
       }
 
-      NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" --no-use
-
-      nvm use default
-
       link_data_dir "$HOME/development" "{{.Param.dataMountPath}}/development"
       link_data_dir "$HOME/.config/codex" "{{.Param.dataMountPath}}/config/codex"
       link_data_dir "$HOME/.config/claude" "{{.Param.dataMountPath}}/config/claude"
       link_data_dir "$HOME/.config/gemini" "{{.Param.dataMountPath}}/config/gemini"
-
-      # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
-      ln -s "$HOME/.config/gemini" "$HOME/.gemini"
-
-      npm install -g corepack
-
-      corepack enable
-      corepack install -g pnpm@latest
-
-      # Install agents
-      pnpm install -g @openai/codex
-      pnpm install -g @anthropic-ai/claude-code
-      pnpm install -g @google/gemini-cli
-
-      cd $DOTFILES_DIR
-      make gemini codex
 
       # Setup IntelliJ config location
 
@@ -283,3 +257,29 @@ provision:
       link_data_dir "$jetbrains_config_dir" "$jetbrains_data_mount_path/config"
       link_data_dir "$jetbrains_local_dir" "$jetbrains_data_mount_path/local"
       link_data_dir "$jetbrains_cache_dir" "$jetbrains_data_mount_path/cache"
+
+  # Node and default packages
+  - mode: user
+    script: |
+      #!/bin/zsh
+      set -eux -o pipefail
+
+      . $HOME/.zshenv
+
+      export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+
+      eval "$(fnm env --corepack-enabled --shell zsh)"
+
+      # Install the latest LTS version of Node.js
+      fnm install --lts
+      fnm default lts-latest
+
+      # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
+      ln -s "$HOME/.config/gemini" "$HOME/.gemini"
+
+      # Install agents
+      pnpm install -g @openai/codex
+      pnpm install -g @google/gemini-cli
+
+      cd $DOTFILES_DIR
+      make gemini codex

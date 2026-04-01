@@ -20,7 +20,7 @@ create:
 
 start:
 	limactl disk unlock $(DATA_DISK_NAME)
-	limactl start $(VM)
+	limactl start --progress $(VM)
 
 shell:
 	limactl shell $(VM)
