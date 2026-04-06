@@ -281,5 +281,10 @@ provision:
       pnpm install -g @openai/codex
       pnpm install -g @google/gemini-cli
 
+      curl -fsSL https://claude.ai/install.sh | bash
+
+      claude plugin marketplace add JuliusBrussee/caveman
+      claude plugin install caveman@caveman
+
       cd $DOTFILES_DIR
-      make gemini codex
+      make gemini claude codex
