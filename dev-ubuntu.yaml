@@ -56,7 +56,7 @@ provision:
       apt-get install zsh git make neovim unzip zip unzip tmux -y
       
       # Codex sandboxing
-      apt get install bubblewrap -y
+      apt-get install bubblewrap -y
 
   # Setup additional Playwright dependencies
   - mode: system
