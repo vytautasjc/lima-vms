@@ -3,6 +3,7 @@
 param:
   dataMountPath: /mnt/lima-dev-data
   vmStateFile: .vmstate
+  vmStateFailedFile: .vmstate-failed
 
 vmType: "vz"
 
@@ -38,7 +39,7 @@ env:
 provision:
   - mode: system
     script: |
-      #!/bin/sh
+      #!/bin/bash
       set -eux -o pipefail
 
       # Setup data mount permissions
@@ -57,24 +58,29 @@ provision:
       # Codex sandboxing
       apt get install bubblewrap -y
 
-      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
-      
-      touch "$stateFile"
-      chown "{{.User}}" "$stateFile"
-
   # Setup additional Playwright dependencies
   - mode: system
     script: |
-      #!/bin/sh
+      #!/bin/bash
       set -eux -o pipefail
 
       stateText="playwright"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
 
-      if grep -Fxq "$stateText" "$stateFile"; then
+      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
         echo "Additional Playwright dependencies already setup, skipping..."
         exit 0
       fi
+
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
 
       wget -O /tmp/libicu74.deb http://ports.ubuntu.com/pool/main/i/icu/libicu74_74.2-1ubuntu3.1_arm64.deb
       dpkg -i /tmp/libicu74.deb
@@ -100,22 +106,32 @@ provision:
         libcairo-gobject2 \
         libgdk-pixbuf-2.0-0
 
-      echo "$stateText" >> "$stateFile"
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
       chown "{{.User}}" "$stateFile"
 
   # Setup Docker
   - mode: system
     script: |
-      #!/bin/sh
+      #!/bin/bash
       set -eux -o pipefail
 
       stateText="docker"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
 
-      if grep -Fxq "$stateText" "$stateFile"; then
+      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
         echo "Docker is already setup, skipping..."
         exit 0
       fi
+
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
 
       echo "Docker not found, proceeding with installation..."
 
@@ -141,14 +157,27 @@ provision:
       groupadd docker || echo "Group docker already exists"
       usermod -aG docker {{.User}}
 
-      echo "$stateText" >> "$stateFile"
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
       chown "{{.User}}" "$stateFile"
 
   # Setup dotfiles
   - mode: user
     script: |
-      #!/bin/zsh
+      #!/bin/bash
       set -eux -o pipefail
+
+      stateText="dotfiles"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
+
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
 
       if [ -e "{{.Param.dataMountPath}}/config/.zshenv.local" ]; then
         echo "Creating a symlink to .zshenv.local"
@@ -166,43 +195,75 @@ provision:
         ln -sf "{{.Param.dataMountPath}}/config/ssh/config" "$HOME/.ssh/config"
       fi
 
-      if [ ! -e "$DOTFILES_DIR" ]; then
+      if [ ! -d "$DOTFILES_DIR" ]; then
         echo "Cloning dotfiles..."
         git clone https://github.com/vytautasjc/dotfiles.git "$DOTFILES_DIR"
-        cd "$DOTFILES_DIR" 
-      else
+        cd "$DOTFILES_DIR"
+      elif [ -d "$DOTFILES_DIR/.git" ]; then
         echo "Updating dotfiles..."
-        cd "$DOTFILES_DIR" && git pull origin main
+        cd "$DOTFILES_DIR"
+        git pull origin main
+      else
+        echo "Directory exists but is not a git repo: $DOTFILES_DIR"
+        exit 1
       fi
       
       make zsh git tmux
 
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
+
+  # Setup login info
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      . $HOME/.zshenv
+
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
+
+      cat >> "$ZDOTDIR/.zprofile.local" <<EOF
+      if [ -s "$failedFile" ]; then
+        echo "Failed provision scripts:"
+        cat "$failedFile"
+        echo
+      fi
+      EOF
+
   # Setup fnm
   - mode: user
     script: |
-      #!/bin/zsh
+      #!/bin/bash
       set -eux -o pipefail
 
       stateText="fnm"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
 
-      if grep -Fxq "$stateText" "$stateFile"; then
+      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
         echo "fnm is already setup, skipping..."
         exit 0
       fi
 
-      . $HOME/.zshenv
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
 
       # Install fnm binary to $XDG_CONFIG_HOME/fnm
       # We use --skip-shell to prevent the installer from modifying .zshrc/.bashrc automatically
       curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
 
-      echo "$stateText" >> "$stateFile"
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
   
   # Install SDKMAN
   - mode: user
     script: |
-      #!/bin/sh
+      #!/bin/bash
       
       ### Do not set -u to not treat unbound variables as error:
       ### sdkman-init.sh: line 20: SDKMAN_CANDIDATES_API: unbound variable
@@ -210,27 +271,50 @@ provision:
 
       stateText="sdkman"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
 
-      if grep -Fxq "$stateText" "$stateFile"; then
+      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
         echo "SDKMAN is already setup, skipping..."
         exit 0
       fi
 
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
+
       export DEBIANT_FRONTEND=noninteractive
 
       curl -s "https://get.sdkman.io?ci=true&rcupdate=false" | bash
-      source "$HOME/.sdkman/bin/sdkman-init.sh"
+      source "{{.Home}}/.sdkman/bin/sdkman-init.sh"
 
       sdk install java 25-open
       sdk install java 25-graalce
 
-      echo "$stateText" >> "$stateFile"
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
 
   # Persistent data links
   - mode: user
     script: |
-      #!/bin/zsh
+      #!/bin/bash
       set -eux -o pipefail
+
+      stateText="links"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
+
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
 
       . $HOME/.zshenv
 
@@ -263,17 +347,32 @@ provision:
       link_data_dir "$jetbrains_local_dir" "$jetbrains_data_mount_path/local"
       link_data_dir "$jetbrains_cache_dir" "$jetbrains_data_mount_path/cache"
 
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
+
   # Node and default packages
   - mode: user
     script: |
-      #!/bin/zsh
+      #!/bin/bash
       set -eux -o pipefail
+
+      stateText="user packages"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
+
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
 
       . $HOME/.zshenv
 
       export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
-      eval "$(fnm env --corepack-enabled --shell zsh)"
+      eval "$(fnm env --corepack-enabled --shell bash)"
 
       # Install the latest LTS version of Node.js
       fnm install --lts
@@ -284,12 +383,14 @@ provision:
 
       # Install agents
       pnpm install -g @openai/codex
-      pnpm install -g @google/gemini-cli
+      # pnpm install -g @google/gemini-cli
 
-      curl -fsSL https://claude.ai/install.sh | bash
+      # curl -fsSL https://claude.ai/install.sh | bash
 
-      claude plugin marketplace add JuliusBrussee/caveman
-      claude plugin install caveman@caveman
+      # claude plugin marketplace add JuliusBrussee/caveman
+      # claude plugin install caveman@caveman
 
       cd $DOTFILES_DIR
       make gemini claude codex
+
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
