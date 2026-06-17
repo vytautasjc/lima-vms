@@ -55,8 +55,8 @@ provision:
       # Core packages
       apt-get install zsh git make neovim unzip zip unzip tmux -y
       
-      # Codex sandboxing
-      apt-get install bubblewrap -y
+      # Codex and Claude sandboxing
+      apt-get install bubblewrap socat -y
 
   # Setup additional Playwright dependencies
   - mode: system
@@ -385,10 +385,15 @@ provision:
       pnpm install -g @openai/codex
       # pnpm install -g @google/gemini-cli
 
-      # curl -fsSL https://claude.ai/install.sh | bash
+      curl -fsSL https://claude.ai/install.sh | bash
 
-      # claude plugin marketplace add JuliusBrussee/caveman
-      # claude plugin install caveman@caveman
+      # Install rtk: https://github.com/rtk-ai/rtk
+      curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
+
+      export RTK_TELEMETRY_DISABLED=1
+
+      rtk init -g --auto-patch
+      rtk init -g --codex --auto-patch
 
       cd $DOTFILES_DIR
       make gemini claude codex
