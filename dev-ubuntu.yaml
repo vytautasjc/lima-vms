@@ -19,9 +19,9 @@ mounts: []
 additionalDisks: []
 
 images:
-  - location: "https://cloud-images.ubuntu.com/releases/plucky/release-20250701/ubuntu-25.04-server-cloudimg-arm64.img"
+  - location: "https://cloud-images.ubuntu.com/releases/resolute/release/ubuntu-26.04-server-cloudimg-arm64.img"
     arch: "aarch64"
-    digest: "sha256:26d0ac2236f12954923eb35ddfee8fa9fff3eab6111ba84786b98ab3b972c6d8"
+    digest: "sha256:5e1c212ac29354dbf51c5b1926d8a359de57ca8c2d2bdacf17651129c29791cb"
 
 user:
   name: limadev
@@ -37,6 +37,7 @@ env:
   DOTFILES_DIR: "/home/limadev/dotfiles"
 
 provision:
+  # (Always) Install/update system packages
   - mode: system
     script: |
       #!/bin/bash
@@ -58,7 +59,7 @@ provision:
       # Codex and Claude sandboxing
       apt-get install bubblewrap socat -y
 
-  # Setup additional Playwright dependencies
+  # (Once) Setup additional Playwright dependencies
   - mode: system
     script: |
       #!/bin/bash
@@ -109,7 +110,7 @@ provision:
       echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
       chown "{{.User}}" "$stateFile"
 
-  # Setup Docker
+  # (Once) Setup Docker
   - mode: system
     script: |
       #!/bin/bash
@@ -140,16 +141,10 @@ provision:
       apt-get update -y
 
       # Add Docker's official GPG key:
-      apt-get install ca-certificates curl -y
-      install -m 0755 -d /etc/apt/keyrings
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-      chmod a+r /etc/apt/keyrings/docker.asc
+      apt-get install curl -y
 
       # Add Docker's repository to Apt sources:
-      echo \
-        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-        $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
-        tee /etc/apt/sources.list.d/docker.list > /dev/null
+      curl -fsSL https://get.docker.com | sudo REPO_ONLY=1 sh
       apt-get update -y
 
       apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
@@ -160,7 +155,7 @@ provision:
       echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
       chown "{{.User}}" "$stateFile"
 
-  # Setup dotfiles
+  # (Always) Setup dotfiles
   - mode: user
     script: |
       #!/bin/bash
@@ -212,7 +207,7 @@ provision:
 
       echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
 
-  # Setup login info
+  # (Always) Setup login info
   - mode: user
     script: |
       #!/bin/bash
@@ -230,7 +225,7 @@ provision:
       fi
       EOF
 
-  # Setup fnm
+  # (Always) Setup fnm
   - mode: user
     script: |
       #!/bin/bash
@@ -239,11 +234,6 @@ provision:
       stateText="fnm"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
       failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
-
-      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
-        echo "fnm is already setup, skipping..."
-        exit 0
-      fi
 
       mark_failed() {
         local exit_code=$?
@@ -260,7 +250,7 @@ provision:
 
       echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
   
-  # Install SDKMAN
+  # (Always) Install/update SDKMAN
   - mode: user
     script: |
       #!/bin/bash
@@ -272,11 +262,6 @@ provision:
       stateText="sdkman"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
       failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
-
-      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
-        echo "SDKMAN is already setup, skipping..."
-        exit 0
-      fi
 
       mark_failed() {
         local exit_code=$?
@@ -297,7 +282,7 @@ provision:
 
       echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
 
-  # Persistent data links
+  # (Once) Persistent data links
   - mode: user
     script: |
       #!/bin/bash
@@ -306,6 +291,11 @@ provision:
       stateText="links"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
       failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
+
+      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
+        echo "Persistent data links already setup, skipping..."
+        exit 0
+      fi
 
       mark_failed() {
         local exit_code=$?
@@ -349,7 +339,7 @@ provision:
 
       echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
 
-  # Node and default packages
+  # (Always) Node and default user packages
   - mode: user
     script: |
       #!/bin/bash
@@ -378,22 +368,49 @@ provision:
       fnm install --lts
       fnm default lts-latest
 
-      # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
-      ln -s "$HOME/.config/gemini" "$HOME/.gemini"
-
       # Install agents
-      pnpm install -g @openai/codex
-      # pnpm install -g @google/gemini-cli
-
       curl -fsSL https://claude.ai/install.sh | bash
 
       # Install rtk: https://github.com/rtk-ai/rtk
       curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
 
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
+
+  # (Once) User post-install setup
+  - mode: user
+    script: |
+      #!/bin/bash
+
+      set -eux -o pipefail
+
+      stateText="user-postinstall"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
+
+      if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
+        echo "User post-install setup is already done, skipping..."
+        exit 0
+      fi
+
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
+
+      . $HOME/.zshenv
+
+      # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
+      ln -s "$HOME/.config/gemini" "$HOME/.gemini"
+
       export RTK_TELEMETRY_DISABLED=1
 
       rtk init -g --auto-patch
-      rtk init -g --codex --auto-patch
+      # Pipe 'N' for telemetry prompt
+      printf 'N\n' | rtk init -g --codex
 
       cd $DOTFILES_DIR
       make gemini claude codex
