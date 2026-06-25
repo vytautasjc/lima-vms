@@ -383,12 +383,12 @@ provision:
 
       set -eux -o pipefail
 
-      stateText="user-postinstall"
+      stateText="once-user-post-install"
       stateFile="{{.Home}}/{{.Param.vmStateFile}}"
       failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
 
       if grep -Eq "^${stateText}( |$)" "$stateFile" 2>/dev/null; then
-        echo "User post-install setup is already done, skipping..."
+        echo "User $stateText setup is already done, skipping..."
         exit 0
       fi
 
@@ -406,13 +406,37 @@ provision:
       # Until https://github.com/google-gemini/gemini-cli/issues/1825 is fixed
       ln -s "$HOME/.config/gemini" "$HOME/.gemini"
 
+      cd $DOTFILES_DIR
+      make gemini claude codex
+
+      echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
+
+  # (Always) User post-install setup
+  - mode: user
+    script: |
+      #!/bin/bash
+
+      set -eux -o pipefail
+
+      stateText="always-user-post-install"
+      stateFile="{{.Home}}/{{.Param.vmStateFile}}"
+      failedFile="{{.Home}}/{{.Param.vmStateFailedFile}}"
+
+      mark_failed() {
+        local exit_code=$?
+        local failed_command=$BASH_COMMAND
+
+        echo "$stateText failed with exit code $exit_code: $failed_command" >> "$failedFile"
+      }
+
+      trap mark_failed ERR
+
+      . $HOME/.zshenv
+
       export RTK_TELEMETRY_DISABLED=1
 
       rtk init -g --auto-patch
       # Pipe 'N' for telemetry prompt
       printf 'N\n' | rtk init -g --codex
-
-      cd $DOTFILES_DIR
-      make gemini claude codex
 
       echo "$stateText $(date '+%Y-%m-%d %H:%M:%S')" >> "$stateFile"
